@@ -27,6 +27,9 @@ class LanguageTokenizer:
         formatted_minified_content = self._format_llama(minified_file_content)
         return self.tokenizer(formatted_minified_content, text_target=original_file_content, padding=tokenizer_padding_policy, 
                               max_length=tokenizer_max_length, truncation=truncate_tokenizer_output, return_tensors="pt")
+    
+    def decode(self, tokens):
+        return self.tokenizer.decode(tokens)
 
     def _get_random_system_prompt(self):
         system_prompts = [
