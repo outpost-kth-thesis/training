@@ -1,0 +1,11 @@
+torch
+vllm
+datasets
+transformers
+bitsandbytes
+numpy
+huggingface_hub
+peft
+accelerate
+python-dotenv
+lightning

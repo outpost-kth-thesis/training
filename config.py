@@ -1,4 +1,9 @@
-model_name="Qwen/Qwen3-1.7B"
-dataset_dir=""
+# model_name="Qwen/Qwen3-1.7B"
+model_name="meta-llama/Llama-3.1-8B"
+dataset_dir="./.garbage/downloadable"
 batch_size=1
 learning_rate=5e-5
+split="train"
+tokenizer_padding_policy="max_length"
+tokenizer_max_length=512
+truncate_tokenizer_output=True
