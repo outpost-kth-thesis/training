@@ -4,8 +4,9 @@ import lightning as L
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 from data import LanguageDataset
 from tokenization import LanguageTokenizer
+import torch.nn as nn
 
-class LanguageModel(L.LightningModule):
+class LanguageModel(nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
@@ -20,24 +21,18 @@ class LanguageModel(L.LightningModule):
 
 
     def forward(self, input_ids, attention_mask, labels):
-        if labels == None:
-            print("no labels were passed")
-        if attention_mask == None:
-            print("No attention mask was passed")
-        if input_ids == None:
-            print("No input ids were passed")
         return self.model(input_ids, attention_mask, labels)
     
 
-    def training_step(self, **kwargs):
-        output = self.model(kwargs)
-        loss = output.loss
-        self.log("training_loss", loss)
-        return loss
+    # def training_step(self, input_ids, attention_mask, labels):
+    #     output = self.model(input_ids, attention_mask, labels)
+    #     loss = output.loss
+    #     self.log("training_loss", loss)
+    #     return loss
     
 
-    def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters(), lr=learning_rate)
+    # def configure_optimizers(self):
+    #     return torch.optim.AdamW(self.parameters(), lr=learning_rate)
         
 
 
