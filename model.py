@@ -18,9 +18,8 @@ class LanguageModel(L.LightningModule):
         self.model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", quantization_config=quantization_configs)
 
 
-    def forward(self, **kwargs):
-        print(kwargs)
-        return self.model(kwargs)
+    def forward(self, input_ids, attention_mask, labels):
+        return self.model(input_ids, attention_mask, labels)
     
 
     def training_step(self, **kwargs):
@@ -38,7 +37,8 @@ class LanguageModel(L.LightningModule):
 if __name__ == "__main__":
     dataset = LanguageDataset()
     item = dataset.__getitem__(0)
+    item.to("cuda")
     print("loaded dataset")
     model = LanguageModel()
-    output = model(item)
+    output = model(**item)
     print(output.loss)
