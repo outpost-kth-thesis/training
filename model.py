@@ -17,6 +17,7 @@ class LanguageModel(nn.Module):
         )
 
         self.model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", quantization_config=quantization_configs)
+        self.model.to("cuda")
 
 
     def forward(self, **kwargs):
@@ -43,5 +44,5 @@ if __name__ == "__main__":
     print("loaded dataset")
     model = LanguageModel()
     output = model(**item)
-    print(t.decode(output))
+    print((output))
     print(output.loss)

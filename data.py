@@ -1,17 +1,18 @@
 from config import dataset_dir
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 import os
-from datasets import Dataset
 from tokenization import LanguageTokenizer
 import torch
 
 class LanguageDataset(Dataset):
+    all_files = []
+    t = LanguageTokenizer()
+    
     def __init__(self):
-        self.all_content = []
-        self.all_files = []
-        self.t = LanguageTokenizer()
         self._walk_root_directory()
 
+    def __len__(self):
+        return len(self.all_files)
 
     def __getitem__(self, index):
         minified_filepath = self.all_files[index]
@@ -33,4 +34,5 @@ class LanguageDataset(Dataset):
 if __name__ == "__main__":
     dt = LanguageDataset()
     torch.set_printoptions(threshold=float('inf'))
-    print(dt.__getitem__(2))
+    for each in enumerate(dt):
+        print(each)

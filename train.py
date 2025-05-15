@@ -1,11 +1,18 @@
 from model import LanguageModel
 from data import LanguageDataset
+from torch.utils.data import DataLoader
 from transformers import Trainer, TrainingArguments, DataCollatorForLanguageModeling
 from config import epochs
 from tokenization import LanguageTokenizer
 
+
+class ModelTrainer(Trainer):
+    def train(self):
+        pass
+
 def train_loop():
     dataset = LanguageDataset()
+    dataloader = DataLoader(dataset)
     model = LanguageModel()
     t = LanguageTokenizer()
 
