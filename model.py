@@ -1,6 +1,5 @@
 import torch
-from config import model_name, learning_rate
-import lightning as L
+from config import model_name
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 from data import LanguageDataset
 from tokenization import LanguageTokenizer
@@ -20,8 +19,8 @@ class LanguageModel(nn.Module):
         self.model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", quantization_config=quantization_configs)
 
 
-    def forward(self, input_ids, attention_mask, labels):
-        return self.model(input_ids, attention_mask, labels)
+    def forward(self, **kwargs):
+        return self.model(kwargs)
     
 
     # def training_step(self, input_ids, attention_mask, labels):
