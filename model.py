@@ -2,6 +2,7 @@ import torch
 from config import model_name, learning_rate
 import lightning as L
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+from dataset import LanguageDataset
 
 class LanguageModel(L.LightningModule):
     def __init__(self, *args, **kwargs):
@@ -20,7 +21,7 @@ class LanguageModel(L.LightningModule):
     def forward(self, **kwargs):
         return self.model(kwargs)
     
-    
+
     def training_step(self, **kwargs):
         output = self.model(kwargs)
         loss = output.loss
@@ -31,3 +32,11 @@ class LanguageModel(L.LightningModule):
     def configure_optimizers(self):
         return torch.optim.AdamW(self.parameters(), lr=learning_rate)
         
+
+
+if __name__ == "__main__":
+    dataset = LanguageDataset()
+    item = dataset.__getitem__(0)
+    model = LanguageModel()
+    output = model(item)
+    print(output.loss)
