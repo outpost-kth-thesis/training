@@ -20,6 +20,12 @@ class LanguageModel(L.LightningModule):
 
 
     def forward(self, input_ids, attention_mask, labels):
+        if labels == None:
+            print("no labels were passed")
+        if attention_mask == None:
+            print("No attention mask was passed")
+        if input_ids == None:
+            print("No input ids were passed")
         return self.model(input_ids, attention_mask, labels)
     
 
