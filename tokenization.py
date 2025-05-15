@@ -25,7 +25,6 @@ class LanguageTokenizer:
         minified_file_content = item["minified_file_content"]
         original_file_content = item["original_file_content"]
         formatted_minified_content = self._format_llama(minified_file_content)
-        print(isinstance(original_file_content, str))
         return self.tokenizer(formatted_minified_content, text_target=original_file_content, padding=tokenizer_padding_policy, 
                               max_length=tokenizer_max_length, truncation=truncate_tokenizer_output, return_tensors="pt")
 

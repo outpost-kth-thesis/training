@@ -32,4 +32,4 @@ class LanguageDataset(Dataset):
 if __name__ == "__main__":
     dt = LanguageDataset()
     torch.set_printoptions(threshold=float('inf'))
-    print(dt.__getitem__(2)["input_ids"])
+    print(dt.__getitem__(2))

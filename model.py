@@ -2,7 +2,7 @@ import torch
 from config import model_name, learning_rate
 import lightning as L
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig
-from dataset import LanguageDataset
+from data import LanguageDataset
 
 class LanguageModel(L.LightningModule):
     def __init__(self, *args, **kwargs):
@@ -15,10 +15,11 @@ class LanguageModel(L.LightningModule):
             bnb_4bit_use_double_quant=True,
         )
 
-        self.model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", quantization_configs=quantization_configs)
+        self.model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", quantization_config=quantization_configs)
 
 
     def forward(self, **kwargs):
+        print(kwargs)
         return self.model(kwargs)
     
 
@@ -37,6 +38,7 @@ class LanguageModel(L.LightningModule):
 if __name__ == "__main__":
     dataset = LanguageDataset()
     item = dataset.__getitem__(0)
+    print("loaded dataset")
     model = LanguageModel()
     output = model(item)
     print(output.loss)

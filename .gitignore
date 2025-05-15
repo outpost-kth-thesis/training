@@ -2,3 +2,5 @@
 .garbage/
 __pycache__
 .vscode/
+config.yaml
+.ipynb_checkpoints/
