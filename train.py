@@ -1,4 +1,3 @@
-from model import LanguageModel
 from data import LanguageDataset
 from torch.utils.data import DataLoader
 from transformers import Trainer, TrainingArguments, DataCollatorForLanguageModeling, get_scheduler, BitsAndBytesConfig, AutoModelForCausalLM
@@ -6,7 +5,7 @@ from config import epochs, model_name
 from tokenization import LanguageTokenizer
 from torch.optim import AdamW
 import torch
-from peft import LoraConfig, TaskType, get_peft_model
+from peft import LoraConfig, TaskType
 
 
 class ModelTrainer(Trainer):
@@ -27,6 +26,10 @@ class ModelTrainer(Trainer):
 
             for step, batch in enumerate(self.train_dataset):
                 batch.to("cuda")
+                if batch["input_ids"].size() != batch["labels"].size():
+                    raise AssertionError(f"input_ids size {batch["input_ids"].size()} does not match labels {batch["labels"].size()}")
+                
+                assert torch.max(batch["input_ids"]) < self.model.config.vocab_size, "Found OOV token ID"
                 outputs = self.model(**batch)
                 loss = outputs.loss
                 loss.backward()
@@ -70,12 +73,16 @@ def train_loop():
 
     model.add_adapter(lora_config)
 
-    data_collator = DataCollatorForLanguageModeling(tokenizer=LanguageTokenizer().tokenizer, mlm=False)
+    t = LanguageTokenizer().tokenizer
+    model.resize_token_embeddings(len(t))
+
+    data_collator = DataCollatorForLanguageModeling(tokenizer=t, mlm=False)
 
     trainer = ModelTrainer(
         model=model,
         args=training_args,
-        train_dataset=dataset
+        train_dataset=dataset,
+        # data_collator=data_collator
     )
 
     trainer.train()
