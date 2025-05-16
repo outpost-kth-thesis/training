@@ -20,19 +20,14 @@ class LanguageModel(nn.Module):
 
 
     def forward(self, input_ids, attention_mask, labels):
-        return self.model(input_ids, attention_mask, labels)
-    
-
-    # def training_step(self, input_ids, attention_mask, labels):
-    #     output = self.model(input_ids, attention_mask, labels)
-    #     loss = output.loss
-    #     self.log("training_loss", loss)
-    #     return loss
-    
-
-    # def configure_optimizers(self):
-    #     return torch.optim.AdamW(self.parameters(), lr=learning_rate)
+        if input_ids == None or labels == None:
+            raise AssertionError("either input_ids or labels have not been passed")
         
+        if attention_mask == None:
+            raise AssertionError("Attention mask has not been passed")
+        
+        return self.model(input_ids, attention_mask, labels)
+
 
 
 if __name__ == "__main__":
