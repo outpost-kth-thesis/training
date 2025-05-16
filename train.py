@@ -41,6 +41,8 @@ class ModelTrainer(Trainer):
                 if step % self.args.logging_steps == 0:
                     print(f"Step {step}: Loss = {loss.item()}")
 
+            torch.save(self.model.state_dict(), f"{self.args.output_dir}/model.pth")
+
 
 
 def train_loop():

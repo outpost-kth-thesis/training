@@ -4,3 +4,4 @@ __pycache__
 .vscode/
 config.yaml
 .ipynb_checkpoints/
+training_output/
