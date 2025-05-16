@@ -7,10 +7,11 @@ from torch.optim import AdamW
 import torch
 from peft import LoraConfig, TaskType
 
+file = open(".garbage/log.csv", "a")
+
 
 class ModelTrainer(Trainer):
     def train(self):
-        self.file = open(".garbage/log.csv", "a")
         if self.optimizer is None:
             self.optimizer = AdamW(self.model.parameters(), lr=self.args.learning_rate)
         if self.lr_scheduler is None:
@@ -28,7 +29,7 @@ class ModelTrainer(Trainer):
             for step, batch in enumerate(self.train_dataset):
                 batch.to("cuda")
                 if batch["input_ids"].size() != batch["labels"].size():
-                    raise AssertionError(f"input_ids size {batch["input_ids"].size()} does not match labels {batch["labels"].size()}")
+                    raise AssertionError("input_ids size does not match labels")
                 
                 assert torch.max(batch["input_ids"]) < self.model.config.vocab_size, "Found OOV token ID"
                 outputs = self.model(**batch)
@@ -39,7 +40,8 @@ class ModelTrainer(Trainer):
                 self.lr_scheduler.step()
                 self.optimizer.zero_grad()
 
-                self.file.write(f"{step}, {loss.item()}\n")
+                global file
+                file.write(f"{step}, {loss.item()}\n")
                 if step % self.args.logging_steps == 0:
                     print(f"Step {step}: Loss = {loss.item()}")
 
@@ -86,7 +88,7 @@ def train_loop():
         model=model,
         args=training_args,
         train_dataset=dataset,
-        # data_collator=data_collator
+        data_collator=data_collator
     )
 
     trainer.train()
