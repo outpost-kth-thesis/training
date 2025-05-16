@@ -10,6 +10,7 @@ from peft import LoraConfig, TaskType
 
 class ModelTrainer(Trainer):
     def train(self):
+        self.file = open(".garbage/log.csv", "a")
         if self.optimizer is None:
             self.optimizer = AdamW(self.model.parameters(), lr=self.args.learning_rate)
         if self.lr_scheduler is None:
@@ -38,6 +39,7 @@ class ModelTrainer(Trainer):
                 self.lr_scheduler.step()
                 self.optimizer.zero_grad()
 
+                self.file.write(f"{step}, {loss.item()}\n")
                 if step % self.args.logging_steps == 0:
                     print(f"Step {step}: Loss = {loss.item()}")
 
