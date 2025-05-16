@@ -34,5 +34,6 @@ class LanguageDataset(Dataset):
 if __name__ == "__main__":
     dt = LanguageDataset()
     torch.set_printoptions(threshold=float('inf'))
-    for each in enumerate(dt):
-        print(each)
+    print(dt.__getitem__(0)["input_ids"].size)
+    for i, each in enumerate(dt):
+        print(each["input_ids"].shape)
