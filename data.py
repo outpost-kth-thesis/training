@@ -6,9 +6,9 @@ import torch
 
 class LanguageDataset(Dataset):
     all_files = []
-    t = LanguageTokenizer()
     
     def __init__(self):
+        self.t = LanguageTokenizer()
         self._walk_root_directory()
 
     def __len__(self):

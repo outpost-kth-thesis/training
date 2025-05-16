@@ -16,16 +16,18 @@ class LanguageTokenizer:
         ]
         self.tokenizer.add_special_tokens(
             {"additional_special_tokens": special_tokens})
-        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
 
     def get_tokenizer(self):
         return self.tokenizer
 
+    def tk(self, text):
+        return self.tokenizer(text, return_tensors="pt")
     def tokenize(self, item):
         minified_file_content = item["minified_file_content"]
         original_file_content = item["original_file_content"]
-        formatted_minified_content = self._format_llama(minified_file_content)
-        return self.tokenizer(formatted_minified_content, text_target=original_file_content, padding=tokenizer_padding, 
+        # formatted_minified_content = self._format_llama(minified_file_content)
+        return self.tokenizer(minified_file_content, text_target=original_file_content, padding=tokenizer_padding, 
                               max_length=tokenizer_max_length, truncation=tokenizer_truncate, return_tensors="pt")
     
     def decode(self, tokens):

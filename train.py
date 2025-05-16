@@ -1,10 +1,12 @@
 from model import LanguageModel
 from data import LanguageDataset
 from torch.utils.data import DataLoader
-from transformers import Trainer, TrainingArguments, DataCollatorForLanguageModeling, get_scheduler
-from config import epochs
+from transformers import Trainer, TrainingArguments, DataCollatorForLanguageModeling, get_scheduler, BitsAndBytesConfig, AutoModelForCausalLM
+from config import epochs, model_name
 from tokenization import LanguageTokenizer
 from torch.optim import AdamW
+import torch
+from peft import LoraConfig, TaskType, get_peft_model
 
 
 class ModelTrainer(Trainer):
@@ -26,7 +28,6 @@ class ModelTrainer(Trainer):
             for step, batch in enumerate(self.train_dataset):
                 batch.to("cuda")
                 outputs = self.model(**batch)
-                print(outputs)
                 loss = outputs.loss
                 loss.backward()
 
@@ -41,10 +42,16 @@ class ModelTrainer(Trainer):
 
 def train_loop():
     dataset = LanguageDataset()
-    dataloader = DataLoader(dataset)
-    model = LanguageModel()
-    t = LanguageTokenizer()
 
+    quantization_configs = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.bfloat16,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_use_double_quant=True,
+    )
+
+    model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", quantization_config=quantization_configs)
+    
     training_args = TrainingArguments(
         output_dir="./training_output",
         per_device_train_batch_size=1,
@@ -53,13 +60,22 @@ def train_loop():
         logging_steps=10
     )
 
-    data_collator = DataCollatorForLanguageModeling(tokenizer=t.tokenizer, mlm=False)
+    lora_config = LoraConfig(
+        task_type=TaskType.CAUSAL_LM, # type of task to train on
+        inference_mode=False, # set to False for training
+        r=8, # dimension of the smaller matrices
+        lora_alpha=32, # scaling factor
+        lora_dropout=0.1 # dropout of LoRA layers
+    )
+
+    model.add_adapter(lora_config)
+
+    data_collator = DataCollatorForLanguageModeling(tokenizer=LanguageTokenizer().tokenizer, mlm=False)
 
     trainer = ModelTrainer(
         model=model,
         args=training_args,
-        train_dataset=dataset,
-        data_collator=data_collator
+        train_dataset=dataset
     )
 
     trainer.train()
