@@ -43,7 +43,7 @@ class ModelTrainer(Trainer):
                 global file
                 file.write(f"{step}, {loss.item()}\n")
                 if step % self.args.logging_steps == 0:
-                    print(f"Step {step}: Loss = {loss.item()}")
+                    print(f"Step {step}: Samples processed: {step * batch_size}, Loss = {loss.item()}")
 
                 
                 if step % self.args.save_steps == 0:
