@@ -55,6 +55,11 @@ class ModelTrainer(Trainer):
 
 def train_loop():
     dataset = LanguageDataset()
+    dataloader = DataLoader(
+        dataset=dataset,
+        batch_size=4,
+        shuffle=False,
+    )
 
     quantization_configs = BitsAndBytesConfig(
         load_in_4bit=True,

@@ -1,5 +1,5 @@
-from config import dataset_dir
-from torch.utils.data import Dataset
+from config import dataset_dir, batch_size
+from torch.utils.data import Dataset, DataLoader
 import os
 from tokenization import LanguageTokenizer
 import torch
@@ -34,6 +34,12 @@ class LanguageDataset(Dataset):
 if __name__ == "__main__":
     dt = LanguageDataset()
     torch.set_printoptions(threshold=float('inf'))
-    for i, each in enumerate(dt):
-        print(each)
+    dataloader = DataLoader(
+        dataset=dt,
+        batch_size=batch_size,
+        shuffle=False,
+    )
+
+    for i, batch in enumerate(dataloader):
+        print(batch)
         break
