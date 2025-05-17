@@ -45,6 +45,10 @@ class ModelTrainer(Trainer):
                 if step % self.args.logging_steps == 0:
                     print(f"Step {step}: Loss = {loss.item()}")
 
+                
+                if step % self.args.save_steps == 0:
+                    torch.save(self.model.state_dict(), f"{self.args.output_dir}/model.pth")
+
             torch.save(self.model.state_dict(), f"{self.args.output_dir}/model.pth")
 
 
@@ -65,7 +69,7 @@ def train_loop():
         output_dir="./training_output",
         per_device_train_batch_size=1,
         num_train_epochs=epochs,
-        save_steps=100,
+        save_steps=1000,
         logging_steps=10
     )
 
