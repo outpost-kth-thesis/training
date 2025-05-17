@@ -24,12 +24,22 @@ class LanguageDataset(Dataset):
             "original_file_content":original_file_content
         }
         return self.t.tokenize(json)
+        # return json
 
     def _walk_root_directory(self):
         for root, _, files in os.walk(dataset_dir):
             for file in files:
                 if ".min.js" in file:
                     self.all_files.append(os.path.join(root, file))
+
+def collate_fn(batches):
+    # for batch in batches:
+    #     batch["input_ids"] = batch["input_ids"].squeeze()
+    #     batch["attention_mask"] = batch["attention_mask"].squeeze()
+    #     batch["labels"] = batch["labels"].squeeze()
+
+    # batches["input_ids"]
+    return batches
 
 if __name__ == "__main__":
     dt = LanguageDataset()
@@ -38,8 +48,12 @@ if __name__ == "__main__":
         dataset=dt,
         batch_size=batch_size,
         shuffle=False,
+        # collate_fn=collate_fn
     )
 
-    for i, batch in enumerate(dataloader):
-        print(batch)
+    for batch in dataloader:
+        # batch["attention_mask"] = batch["attention_mask"].squeeze()
+        # print(batch.keys())
+        print(batch["input_ids"].size())
+        # print(batch)
         break

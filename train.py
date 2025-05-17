@@ -31,6 +31,9 @@ class ModelTrainer(Trainer):
                 if batch["input_ids"].size() != batch["labels"].size():
                     raise AssertionError("input_ids size does not match labels")
                 
+                if batch["input_ids"].size() != batch["attention_mask"].size():
+                    raise AssertionError("input_ids size does not match labels")
+                
                 assert torch.max(batch["input_ids"]) < self.model.config.vocab_size, "Found OOV token ID"
                 outputs = self.model(**batch)
                 loss = outputs.loss
