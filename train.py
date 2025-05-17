@@ -9,61 +9,56 @@ from peft import LoraConfig, TaskType
 
 file = open(".garbage/log.csv", "a")
 
+# class ModelTrainer(Trainer):
+#     def train(self):
+#         if self.optimizer is None:
+#             self.optimizer = AdamW(self.model.parameters(), lr=self.args.learning_rate)
+#         if self.lr_scheduler is None:
+#             num_training_steps = len(self.train_dataset) * self.args.num_train_epochs
+#             self.lr_scheduler = get_scheduler(
+#                 name="linear",
+#                 optimizer=self.optimizer,
+#                 num_warmup_steps=0,
+#                 num_training_steps=num_training_steps,
+#             )
 
-class ModelTrainer(Trainer):
-    def train(self):
-        if self.optimizer is None:
-            self.optimizer = AdamW(self.model.parameters(), lr=self.args.learning_rate)
-        if self.lr_scheduler is None:
-            num_training_steps = len(self.train_dataset) * self.args.num_train_epochs
-            self.lr_scheduler = get_scheduler(
-                name="linear",
-                optimizer=self.optimizer,
-                num_warmup_steps=0,
-                num_training_steps=num_training_steps,
-            )
+#         for epoch in range(self.args.num_train_epochs):
+#             print(f"Starting epoch {epoch + 1}")
 
-        for epoch in range(self.args.num_train_epochs):
-            print(f"Starting epoch {epoch + 1}")
-
-            for step, batch in enumerate(self.train_dataset):
-                batch.to("cuda")
-                if batch["input_ids"].size() != batch["labels"].size():
-                    raise AssertionError("input_ids size does not match labels")
+#             for step, batch in enumerate(self.train_dataset):
+#                 batch.to("cuda")
+#                 if batch["input_ids"].size() != batch["labels"].size():
+#                     raise AssertionError("input_ids size does not match labels")
                 
-                if batch["input_ids"].size() != batch["attention_mask"].size():
-                    raise AssertionError("input_ids size does not match labels")
+#                 if batch["input_ids"].size() != batch["attention_mask"].size():
+#                     raise AssertionError("input_ids size does not match labels")
                 
-                assert torch.max(batch["input_ids"]) < self.model.config.vocab_size, "Found OOV token ID"
-                outputs = self.model(**batch)
-                loss = outputs.loss
-                loss.backward()
+#                 assert torch.max(batch["input_ids"]) < self.model.config.vocab_size, "Found OOV token ID"
+#                 outputs = self.model(**batch)
+#                 loss = outputs.loss
+#                 loss.backward()
 
-                self.optimizer.step()
-                self.lr_scheduler.step()
-                self.optimizer.zero_grad()
+#                 self.optimizer.step()
+#                 self.lr_scheduler.step()
+#                 self.optimizer.zero_grad()
 
-                global file
-                file.write(f"{step}, {loss.item()}\n")
-                if step % self.args.logging_steps == 0:
-                    print(f"Step {step}: Samples processed: {step * batch_size}, Loss = {loss.item()}")
+#                 global file
+#                 file.write(f"{step}, {loss.item()}\n")
+#                 if step % self.args.logging_steps == 0:
+#                     print(f"Step {step}: Samples processed: {step * batch_size}, Loss = {loss.item()}")
 
                 
-                if step % self.args.save_steps == 0:
-                    torch.save(self.model.state_dict(), f"{self.args.output_dir}/model.pth")
+#                 if step % self.args.save_steps == 0:
+#                     torch.save(self.model.state_dict(), f"{self.args.output_dir}/model_contd.pth")
 
-            torch.save(self.model.state_dict(), f"{self.args.output_dir}/model.pth")
+#             # torch.save(self.model.state_dict(), f"{self.args.output_dir}/model.pth")
+#             model.save_pretrained(self.args.output_dir)
+#             tokenizer.save_pretrained(self.args.output_dir)
 
 
 
 def train_loop():
     dataset = LanguageDataset()
-    dataloader = DataLoader(
-        dataset=dataset,
-        batch_size=batch_size,
-        shuffle=False,
-    )
-
     quantization_configs = BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_compute_dtype=torch.bfloat16,
@@ -74,8 +69,8 @@ def train_loop():
     model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", quantization_config=quantization_configs)
     
     training_args = TrainingArguments(
-        output_dir="./training_output",
-        per_device_train_batch_size=1,
+        output_dir="./training_checkpoints",
+        per_device_train_batch_size=batch_size,
         num_train_epochs=epochs,
         save_steps=1000,
         logging_steps=10
@@ -96,10 +91,10 @@ def train_loop():
 
     data_collator = DataCollatorForLanguageModeling(tokenizer=t, mlm=False)
 
-    trainer = ModelTrainer(
+    trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=dataloader,
+        train_dataset=dataset,
         data_collator=data_collator
     )
 
