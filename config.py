@@ -15,6 +15,7 @@ batch_size = model_configs["batch_size"]
 learning_rate = float(model_configs["learning_rate"])
 split = model_configs["split"]
 epochs = int(model_configs["epochs"])
+checkpoints_dir = model_configs["checkpoints_dir"]
 
 tokenizer_configs = configurations["tokenizer_configs"]
 tokenizer_max_length = int(tokenizer_configs["max_length"])

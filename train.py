@@ -1,7 +1,7 @@
 from data import LanguageDataset
 from torch.utils.data import DataLoader
 from transformers import Trainer, TrainingArguments, DataCollatorForLanguageModeling, AutoTokenizer, BitsAndBytesConfig, AutoModelForCausalLM, get_cosine_schedule_with_warmup
-from config import epochs, model_name, batch_size
+from config import epochs, model_name, batch_size, learning_rate
 from tokenization import LanguageTokenizer
 from torch.optim import AdamW
 import torch
@@ -10,10 +10,25 @@ from peft import LoraConfig, TaskType, PeftModel, PeftConfig, get_peft_model
 from safetensors.torch import save_model
 from transformers.trainer_utils import get_last_checkpoint
 import bitsandbytes as bnb
+from torch.optim import AdamW
 
 
-# print(get_last_checkpoint("./training_checkpoints"))
-# last_checkpoint = get_last_checkpoint("./training_checkpoints")
+class CustomTrainer(Trainer):
+    def __init__(self, **kwargs):
+        self.optimizer = create_loraplus_optimizer(
+            model=self.model,
+            optimizer_cls=bnb.optim.Adam8Bit,
+            lr=learning_rate,
+            loraplus_lr_ratio=16
+        )
+        self.scheduler = None
+        super().__init__(model, **kwargs)
+        
+
+    def train(self, **kwargs):
+        last_checkpoint = get_last_checkpoint("./checkpoints")
+        if last_checkpoint == None:
+            pass
 
 dataset = LanguageDataset()
 t = LanguageTokenizer().tokenizer
