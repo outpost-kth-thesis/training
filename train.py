@@ -1,15 +1,22 @@
 from data import LanguageDataset
 from torch.utils.data import DataLoader
-from transformers import Trainer, TrainingArguments, DataCollatorForLanguageModeling, AutoTokenizer, BitsAndBytesConfig, AutoModelForCausalLM
+from transformers import Trainer, TrainingArguments, DataCollatorForLanguageModeling, AutoTokenizer, BitsAndBytesConfig, AutoModelForCausalLM, get_cosine_schedule_with_warmup
 from config import epochs, model_name, batch_size
 from tokenization import LanguageTokenizer
 from torch.optim import AdamW
 import torch
+from peft.optimizers import create_loraplus_optimizer
 from peft import LoraConfig, TaskType, PeftModel, PeftConfig, get_peft_model
 from safetensors.torch import save_model
+from transformers.trainer_utils import get_last_checkpoint
+import bitsandbytes as bnb
 
+
+# print(get_last_checkpoint("./training_checkpoints"))
+# last_checkpoint = get_last_checkpoint("./training_checkpoints")
 
 dataset = LanguageDataset()
+t = LanguageTokenizer().tokenizer
 
 quantization_configs = BitsAndBytesConfig(
     load_in_4bit=True,
@@ -18,9 +25,9 @@ quantization_configs = BitsAndBytesConfig(
     bnb_4bit_use_double_quant=True,
 )
 
-model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", quantization_config=quantization_configs)
-t = LanguageTokenizer().tokenizer
-model.resize_token_embeddings(len(t), mean_resizing=True)
+model = AutoModelForCausalLM.from_pretrained(
+    model_name, device_map="auto", quantization_config=quantization_configs)
+model.resize_token_embeddings(len(t), model.model.embed_tokens.num_embeddings)
 
 training_args = TrainingArguments(
     output_dir="./training_output",
@@ -30,28 +37,56 @@ training_args = TrainingArguments(
     save_strategy="steps",
     save_safetensors=False,
     logging_steps=10,
+    lr_scheduler_type="linear"
 )
 
 lora_config = LoraConfig(
-    task_type=TaskType.CAUSAL_LM,
-    inference_mode=False, 
+    # task_type=TaskType.CAUSAL_LM,
+    inference_mode=False,
     r=8,
     lora_alpha=32,
-    lora_dropout=0.1
+    lora_dropout=0.1,
+    target_modules=[
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj",
+        "lm_head",
+    ],
+    # trainable_token_indices={'embed_tokens': t.convert_tokens_to_ids('[PAD]')},
 )
+# lora_config = LoraConfig(
+#     target_modules='all-linear',
+#     trainable_token_indices={'embed_tokens': t.convert_tokens_to_ids('[PAD]')},
+# )
 
 peft_model = get_peft_model(model=model, peft_config=lora_config)
 
+optimizer = create_loraplus_optimizer(
+    model=model,
+    optimizer_cls=bnb.optim.Adam8bit,
+    lr=5e-5,
+    loraplus_lr_ratio=16,
+)
 
-data_collator = DataCollatorForLanguageModeling(tokenizer=t, mlm=False)
+scheduler = get_cosine_schedule_with_warmup(
+    optimizer,
+    num_warmup_steps=100,
+    num_training_steps=1000,
+)
+
+# data_collator = DataCollatorForLanguageModeling(tokenizer=t, mlm=False)
 trainer = Trainer(
     model=peft_model,
     processing_class=t,
+    optimizers=(optimizer, scheduler),
     args=training_args,
     train_dataset=dataset,
-    data_collator=data_collator
+    # data_collator=data_collator
 )
 
 
 trainer.train()
-
