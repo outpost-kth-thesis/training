@@ -22,6 +22,21 @@ class ModifiedTrainer(Trainer):
         }, f"{output_dir}/optimizer.pt")
 
 
+    def save_model(self, output_dir = None, _internal_call = False):
+        self.processing_class.save_pretrained(output_dir)
+        self.peft_model.save_pretrained(output_dir)
+
+    def _load_from_checkpoint(self, resume_from_checkpoint, model=None):
+        optimizer_state_dict = torch.load(
+            f"{resume_from_checkpoint}/optimizer.pt",
+            weights_only=False                          # Setting this line to False is generally not recommended as this can allow for arbitrary code execution
+        )
+        self.optimizer.load_state_dict(optimizer_state_dict, save_embedding_layer=True)
+        self.peft_model = PeftModel.from_pretrained(self.model, resume_from_checkpoint, save_embedding_layer=True)
+        self.model = self.peft_model
+        self.processing_class = AutoTokenizer.from_pretrained(resume_from_checkpoint, save_embedding_layer=True)
+        
+
 dataset = LanguageDataset()
 t = LanguageTokenizer().tokenizer
 

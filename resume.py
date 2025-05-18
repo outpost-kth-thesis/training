@@ -8,7 +8,6 @@ import torch
 from peft import LoraConfig, TaskType, PeftModel, PeftConfig
 from safetensors.torch import save_model
 
-
 class ModifiedTrainer(Trainer):
     def _save_optimizer_and_scheduler(self, output_dir):
         torch.save({
@@ -18,7 +17,20 @@ class ModifiedTrainer(Trainer):
         }, f"{output_dir}/optimizer.pt")
 
 
+    def save_model(self, output_dir = None, _internal_call = False):
+        self.processing_class.save_pretrained(output_dir)
+        self.peft_model.save_pretrained(output_dir)
 
+    def _load_from_checkpoint(self, resume_from_checkpoint, model=None):
+        optimizer_state_dict = torch.load(
+            f"{resume_from_checkpoint}/optimizer.pt",
+            weights_only=False                          # Setting this line to False is generally not recommended as this can allow for arbitrary code execution
+        )
+        self.optimizer.load_state_dict(optimizer_state_dict, save_embedding_layer=True)
+        self.peft_model = PeftModel.from_pretrained(self.model, resume_from_checkpoint, save_embedding_layer=True)
+        self.model = self.peft_model
+        self.processing_class = AutoTokenizer.from_pretrained(resume_from_checkpoint, save_embedding_layer=True)
+        
 dataset = LanguageDataset()
 
 quantization_configs = BitsAndBytesConfig(
@@ -30,7 +42,7 @@ quantization_configs = BitsAndBytesConfig(
 
 model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", quantization_config=quantization_configs)
 t = LanguageTokenizer().tokenizer
-model.resize_token_embeddings(len(t), mean_resizing=True)
+model.resize_token_embeddings(len(t), model.model.embed_tokens.num_embeddings)
 
 peft_model = PeftModel.from_pretrained(model, "./training_output/checkpoint-20")
 
