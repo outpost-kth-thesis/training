@@ -13,22 +13,14 @@ import bitsandbytes as bnb
 from torch.optim import AdamW
 
 
-class CustomTrainer(Trainer):
-    def __init__(self, **kwargs):
-        self.optimizer = create_loraplus_optimizer(
-            model=self.model,
-            optimizer_cls=bnb.optim.Adam8Bit,
-            lr=learning_rate,
-            loraplus_lr_ratio=16
-        )
-        self.scheduler = None
-        super().__init__(model, **kwargs)
-        
+class ModifiedTrainer(Trainer):
+    def _save_optimizer_and_scheduler(self, output_dir):
+        torch.save({
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'param_groups': self.optimizer.param_groups,
+            'state': self.optimizer.state
+        }, f"{output_dir}/optimizer.pt")
 
-    def train(self, **kwargs):
-        last_checkpoint = get_last_checkpoint("./checkpoints")
-        if last_checkpoint == None:
-            pass
 
 dataset = LanguageDataset()
 t = LanguageTokenizer().tokenizer
@@ -56,27 +48,12 @@ training_args = TrainingArguments(
 )
 
 lora_config = LoraConfig(
-    # task_type=TaskType.CAUSAL_LM,
+    task_type=TaskType.CAUSAL_LM,
     inference_mode=False,
     r=8,
     lora_alpha=32,
     lora_dropout=0.1,
-    target_modules=[
-        "q_proj",
-        "k_proj",
-        "v_proj",
-        "o_proj",
-        "gate_proj",
-        "up_proj",
-        "down_proj",
-        "lm_head",
-    ],
-    # trainable_token_indices={'embed_tokens': t.convert_tokens_to_ids('[PAD]')},
 )
-# lora_config = LoraConfig(
-#     target_modules='all-linear',
-#     trainable_token_indices={'embed_tokens': t.convert_tokens_to_ids('[PAD]')},
-# )
 
 peft_model = get_peft_model(model=model, peft_config=lora_config)
 
@@ -93,14 +70,14 @@ scheduler = get_cosine_schedule_with_warmup(
     num_training_steps=1000,
 )
 
-# data_collator = DataCollatorForLanguageModeling(tokenizer=t, mlm=False)
-trainer = Trainer(
+data_collator = DataCollatorForLanguageModeling(tokenizer=t, mlm=False)
+trainer = ModifiedTrainer(
     model=peft_model,
     processing_class=t,
     optimizers=(optimizer, scheduler),
     args=training_args,
     train_dataset=dataset,
-    # data_collator=data_collator
+    data_collator=data_collator
 )
 
 
