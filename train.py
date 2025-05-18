@@ -48,7 +48,7 @@ def train_loop():
     data_collator = DataCollatorForLanguageModeling(tokenizer=t, mlm=False)
     trainer = Trainer(
         model=peft_model,
-        tokenizer=t,
+        processing_class=t,
         args=training_args,
         train_dataset=dataset,
         data_collator=data_collator
@@ -60,4 +60,3 @@ def train_loop():
 
 if __name__ == "__main__":
     train_loop()
-    # resume_loop()

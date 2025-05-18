@@ -39,7 +39,7 @@ def resume_loop():
     t = AutoTokenizer.from_pretrained("./training_output/checkpoint-20")
     trainer = Trainer(
         model=peft_model,
-        tokenizer=t,
+        processing_class=t,
         args=training_args,
         train_dataset=dataset,
         data_collator=data_collator,
