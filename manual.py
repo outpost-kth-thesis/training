@@ -11,6 +11,7 @@ from safetensors.torch import save_model
 from transformers.trainer_utils import get_last_checkpoint
 import bitsandbytes as bnb
 from torch.optim import AdamW
+from torch.utils.data import DataLoader
 import os
 from os import path
 
@@ -18,6 +19,10 @@ class CustomTrainer(Trainer):
     def __init__(self, **kwargs):
 
         self.dataset = LanguageDataset()
+        self.dataloader = DataLoader(
+            dataset=self.dataset,
+            batch_size=batch_size
+        )
         self.processing_class = LanguageTokenizer().tokenizer
 
         quantization_configs = BitsAndBytesConfig(
@@ -50,14 +55,23 @@ class CustomTrainer(Trainer):
         
 
     def train(self):
-        if path.exists(checkpoints_dir):
-            last_checkpoint = get_last_checkpoint(checkpoints_dir)
-
+        os.makedirs(checkpoints_dir, exist_ok=True)
+        last_checkpoint = get_last_checkpoint(checkpoints_dir)
         if last_checkpoint != None:
             self._resume_training()
         else:
-            pass
+            self._fresh_start_training()
 
+    def _fresh_start_training(self):
+        for each_epoch in range(epochs):
+            for step, batch in enumerate(self.dataloader):
+                batch.to("cuda")
+                output = self.peft_model(**batch)
+                loss = output.loss
+                loss.backward()
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+                print(step, output.loss)
 
     def _resume_training(self):
         if path.exists(checkpoints_dir):
@@ -68,7 +82,7 @@ class CustomTrainer(Trainer):
         
 
     def _save_checkpoint(self, epochs):
-        os.makedirs("./checkpoints", exist_ok=True)
+        os.makedirs(checkpoints_dir, exist_ok=True)
         last_checkpoint = get_last_checkpoint(checkpoints_dir)
         if last_checkpoint == None:
             checkpoint_save = "checkpoint-1"
@@ -182,7 +196,7 @@ class CustomTrainer(Trainer):
 
 
 trainer = CustomTrainer()
-trainer._save_checkpoint(1)
+trainer.train()
 # trainer._load_checkpoint()
 
 # loaded = torch.load(f"{checkpoints_dir}/optimizer.pt")
