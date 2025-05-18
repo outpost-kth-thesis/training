@@ -50,7 +50,7 @@ data_collator = DataCollatorForLanguageModeling(tokenizer=t, mlm=False)
 def train_loop():
     trainer = Trainer(
         model=model,
-        tokenizer=t.tokenize,
+        tokenizer=t,
         args=training_args,
         train_dataset=dataset,
         data_collator=data_collator
@@ -65,7 +65,7 @@ def resume_loop():
 
     trainer = Trainer(
         model=peft_model,
-        tokenizer=t.tokenize,
+        tokenizer=t,
         args=training_args,
         train_dataset=dataset,
         data_collator=data_collator

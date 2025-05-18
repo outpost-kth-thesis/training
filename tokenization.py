@@ -17,14 +17,14 @@ class LanguageTokenizer:
         self.tokenizer.add_special_tokens(
             {"additional_special_tokens": special_tokens})
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-        # self.tokenizer.pad_token = self.tokenizer.eos_token
         
 
     def get_tokenizer(self):
         return self.tokenizer
 
-    def tk(self, text):
-        return self.tokenizer(text, return_tensors="pt")
+    def save_pretrained(self, **kwargs):
+        self.tokenizer.save_pretrained(**kwargs)
+
     def tokenize(self, item):
         minified_file_content = item["minified_file_content"]
         original_file_content = item["original_file_content"]
