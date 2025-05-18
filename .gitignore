@@ -5,3 +5,4 @@ __pycache__
 config.yaml
 .ipynb_checkpoints/
 training_output/
+checkpoints/

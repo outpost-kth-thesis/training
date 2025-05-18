@@ -11,6 +11,7 @@ from safetensors.torch import save_model
 from transformers.trainer_utils import get_last_checkpoint
 import bitsandbytes as bnb
 from torch.optim import AdamW
+import os
 from os import path
 
 class CustomTrainer(Trainer):
@@ -29,24 +30,14 @@ class CustomTrainer(Trainer):
         self.base_model = AutoModelForCausalLM.from_pretrained(
             model_name, device_map="auto", quantization_config=quantization_configs)
         self.base_model.resize_token_embeddings(len(self.processing_class))
+        
         lora_config = LoraConfig(
             inference_mode=False,
             r=8,
             lora_alpha=32,
             lora_dropout=0.1,
-            target_modules=[
-                "q_proj",
-                "k_proj",
-                "v_proj",
-                "o_proj",
-                "gate_proj",
-                "up_proj",
-                "down_proj",
-                "lm_head",
-            ],
         )
         self.peft_model = get_peft_model(model=self.base_model, peft_config=lora_config)
-
 
         self.optimizer = create_loraplus_optimizer(
             model=self.base_model,
@@ -62,7 +53,9 @@ class CustomTrainer(Trainer):
         if path.exists(checkpoints_dir):
             last_checkpoint = get_last_checkpoint(checkpoints_dir)
 
-        if last_checkpoint == None:
+        if last_checkpoint != None:
+            self._resume_training()
+        else:
             pass
 
 
@@ -75,29 +68,40 @@ class CustomTrainer(Trainer):
         
 
     def _save_checkpoint(self, epochs):
-        # self.processing_class.save_pretrained(f"{checkpoints_dir}/")
-        # self.peft_model.save_pretrained(checkpoints_dir)
+        os.makedirs("./checkpoints", exist_ok=True)
+        last_checkpoint = get_last_checkpoint(checkpoints_dir)
+        if last_checkpoint == None:
+            checkpoint_save = "checkpoint-1"
+        else:
+            checkpoint_save = f"checkpoint-{int(last_checkpoint.split("-")[1]) + 1}"
+
+        os.makedirs(f"{checkpoints_dir}/{checkpoint_save}", exist_ok=True)
+
+        self.processing_class.save_pretrained(f"{checkpoints_dir}/")
+        self.peft_model.save_pretrained(checkpoints_dir)
         torch.save({
             'epochs': epochs,
             'model': self.base_model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'param_groups': self.optimizer.param_groups,
             'state': self.optimizer.state
-        }, f"{checkpoints_dir}/optimizer.pt")
+        }, f"{checkpoints_dir}/{checkpoint_save}/model.pt")
 
     def _load_checkpoint(self):
-        # if path.exists(checkpoints_dir):
-        #     last_checkpoint = get_last_checkpoint(checkpoints_dir)
+        if path.exists(checkpoints_dir):
+            last_checkpoint = get_last_checkpoint(checkpoints_dir)
 
-        # if last_checkpoint == None:
-        #     print("No checkpoints found in the checkpoints directory")
+        if last_checkpoint == None:
+            print("No checkpoints found in the checkpoints directory")
+            return
         
         optimizer_state_dict = torch.load(
-            f"{checkpoints_dir}/optimizer.pt",
-            weights_only=False
+            f"{last_checkpoint}/model.pt",
+            weights_only=False                          # Setting this line to False is generally not recommended as this can allow for arbitrary code execution
         )
-        self.optimizer.load_state_dict(optimizer_state_dict)
-        # self.peft_model = PeftModel(self.base_model, f"{checkpoints_dir}")
+        self.optimizer.load_state_dict(optimizer_state_dict, save_embedding_layer=True)
+        self.peft_model = PeftModel.from_pretrained(self.base_model, f"{checkpoints_dir}", save_embedding_layer=True)
+        self.processing_class = AutoTokenizer.from_pretrained(f"{checkpoints_dir}", save_embedding_layer=True)
         
 
 
@@ -179,7 +183,7 @@ class CustomTrainer(Trainer):
 
 trainer = CustomTrainer()
 trainer._save_checkpoint(1)
-trainer._load_checkpoint()
+# trainer._load_checkpoint()
 
 # loaded = torch.load(f"{checkpoints_dir}/optimizer.pt")
 # print(loaded.keys())
