@@ -5,12 +5,10 @@ from config import epochs, model_name, batch_size
 from tokenization import LanguageTokenizer
 from torch.optim import AdamW
 import torch
-from peft import LoraConfig, TaskType, PeftModel, PeftConfig, get_peft_model
+from peft import LoraConfig, TaskType, PeftModel, PeftConfig
 from safetensors.torch import save_model
 
-
-def train_loop():
-
+def resume_loop():
     dataset = LanguageDataset()
 
     quantization_configs = BitsAndBytesConfig(
@@ -24,6 +22,8 @@ def train_loop():
     t = LanguageTokenizer().tokenizer
     model.resize_token_embeddings(len(t), mean_resizing=True)
 
+    peft_model = PeftModel.from_pretrained(model, "./training_output/checkpoint-20")
+
     training_args = TrainingArguments(
         output_dir="./training_output",
         per_device_train_batch_size=batch_size,
@@ -34,30 +34,19 @@ def train_loop():
         logging_steps=10,
     )
 
-    lora_config = LoraConfig(
-        task_type=TaskType.CAUSAL_LM,
-        inference_mode=False, 
-        r=8,
-        lora_alpha=32,
-        lora_dropout=0.1
-    )
-
-    peft_model = get_peft_model(model=model, peft_config=lora_config)
-
-
     data_collator = DataCollatorForLanguageModeling(tokenizer=t, mlm=False)
+
+    t = AutoTokenizer.from_pretrained("./training_output/checkpoint-20")
     trainer = Trainer(
         model=peft_model,
         tokenizer=t,
         args=training_args,
         train_dataset=dataset,
-        data_collator=data_collator
+        data_collator=data_collator,
     )
 
-
-    trainer.train()
+    trainer.train(resume_from_checkpoint=True)
 
 
 if __name__ == "__main__":
-    train_loop()
-    # resume_loop()
+    resume_loop()
