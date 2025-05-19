@@ -87,7 +87,7 @@ training_args = TrainingArguments(
     save_steps=10,
     save_strategy="steps",
     save_safetensors=False,
-    logging_steps=10,
+    logging_steps=1,
     lr_scheduler_type="linear"
 )
 
@@ -103,4 +103,4 @@ trainer = Trainer(
 )
 
 
-trainer.train()
+trainer.train(resume_from_checkpoint=True)

@@ -11,30 +11,31 @@ import bitsandbytes as bnb
 from peft.optimizers import create_loraplus_optimizer
 
 class ModifiedTrainer(Trainer):
-    # def __init__(self, model = None, args = None, data_collator = None, train_dataset = None, eval_dataset = None, processing_class = None, model_init = None, compute_loss_func = None, compute_metrics = None, callbacks = None, optimizers = ..., optimizer_cls_and_kwargs = None, preprocess_logits_for_metrics = None):
-    #     # super().__init__(model, args, data_collator, train_dataset, eval_dataset, processing_class, model_init, compute_loss_func, compute_metrics, callbacks, optimizers, optimizer_cls_and_kwargs, preprocess_logits_for_metrics)
-        
-    # #     if not hasattr(self.model, "peft_config"):
-    # #         print("MODEL MODEL MODEL does not have peft config")
-    # #     else:
-    # #         print("MODEL MODEL MODEL PEFT adapter already attached.")
-    #     print("something is it working")
-    
-    def _save_optimizer_and_scheduler(self, output_dir):
-        torch.save({
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'param_groups': self.optimizer.param_groups,
-            'state': self.optimizer.state
-        }, f"{output_dir}/optimizer.pt")
+    def __init__(self, llama_base_model = None, model = None, args = None, data_collator = None, train_dataset = None, eval_dataset = None, processing_class = None, model_init = None, compute_loss_func = None, compute_metrics = None, callbacks = None, optimizers = ..., optimizer_cls_and_kwargs = None, preprocess_logits_for_metrics = None):
+        super().__init__(model, args, data_collator, train_dataset, eval_dataset, processing_class, model_init, compute_loss_func, compute_metrics, callbacks, optimizers, optimizer_cls_and_kwargs, preprocess_logits_for_metrics)
+        self.llama_base_model = llama_base_model
+
+
+        # if not hasattr(llama_base_model, "peft_config"):
+        #     print("constructor MODEL MODEL MODEL does not have peft config")
+        # else:
+        #     print("constructor MODEL MODEL MODEL PEFT adapter already attached.")
+
+    # def _save_optimizer_and_scheduler(self, output_dir):
+    #     torch.save({
+    #         'optimizer_state_dict': self.optimizer.state_dict(),
+    #         'param_groups': self.optimizer.param_groups,
+    #         'state': self.optimizer.state
+    #     }, f"{output_dir}/optimizer.pt")
 
 
     def save_model(self, output_dir = None, _internal_call = False):
         self.processing_class.save_pretrained(output_dir)
         self.model.save_pretrained(output_dir)
 
-    def train(self, resume_from_checkpoint = None, trial = None, ignore_keys_for_eval = None, **kwargs):
-        print("checkpoint", resume_from_checkpoint)
-        super().train(resume_from_checkpoint, trial, ignore_keys_for_eval, **kwargs)
+    # def train(self, resume_from_checkpoint = None, trial = None, ignore_keys_for_eval = None, **kwargs):
+    #     print("checkpoint", resume_from_checkpoint)
+    #     super().train(resume_from_checkpoint, trial, ignore_keys_for_eval, **kwargs)
 
     def _load_from_checkpoint(self, resume_from_checkpoint, model=None):
         print("loading from checkpoint called")
@@ -56,14 +57,14 @@ class ModifiedTrainer(Trainer):
         #         print(i.data.size())
         # print("ok printing")
 
-        if not hasattr(self.model.base_model, "peft_config"):
-            print("MODEL MODEL MODEL does not have peft config")
-        else:
-            print("MODEL MODEL MODEL PEFT adapter already attached.")
-        self.optimizer.load_state_dict(optimizer_state_dict)
-        # self.peft_model = PeftModel.from_pretrained(self.model.base_model, resume_from_checkpoint)
-        # self.model = self.peft_model
-        # self.processing_class = AutoTokenizer.from_pretrained(resume_from_checkpoint)
+        # if not hasattr(self.base_model, "peft_config"):
+        #     print("MODEL MODEL MODEL does not have peft config")
+        # else:
+        #     print("MODEL MODEL MODEL PEFT adapter already attached.")
+        # self.optimizer.load_state_dict(optimizer_state_dict)
+        peft_model = PeftModel.from_pretrained(self.llama_base_model, resume_from_checkpoint)
+        self.model = peft_model
+        self.processing_class = AutoTokenizer.from_pretrained(resume_from_checkpoint)
         
 dataset = LanguageDataset()
 
@@ -78,7 +79,13 @@ model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", quan
 t = LanguageTokenizer().tokenizer
 model.resize_token_embeddings(len(t), model.model.embed_tokens.num_embeddings)
 
+backup_model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", quantization_config=quantization_configs)
+backup_model.resize_token_embeddings(len(t), backup_model.model.embed_tokens.num_embeddings)
 
+# if not hasattr(model, "peft_config"):
+#     print(" MODEL MODEL MODEL does not have peft config")
+# else:
+#     print(" MODEL MODEL MODEL PEFT adapter already attached.")
 
 lora_config = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
@@ -90,7 +97,12 @@ lora_config = LoraConfig(
 
 peft_model = get_peft_model(model=model, peft_config=lora_config)
 
-print("is there where the log is coming from?")
+
+if not hasattr(model, "peft_config"):
+    print(" MODEL MODEL MODEL does not have peft config")
+else:
+    print(" MODEL MODEL MODEL PEFT adapter already attached.")
+
 
 optimizer = create_loraplus_optimizer(
     model=peft_model,
@@ -98,20 +110,15 @@ optimizer = create_loraplus_optimizer(
     lr=5e-5,
     loraplus_lr_ratio=16,
 )
-# print("is there where the log is coming from? second before")
-
-# loaded_peft_model = PeftModel.from_pretrained(model, "./training_output/checkpoint-20")
-
-# print("is there where the log is coming from? second")
 
 training_args = TrainingArguments(
     output_dir="./training_output",
     per_device_train_batch_size=batch_size,
     num_train_epochs=epochs,
-    save_steps=10,
+    save_steps=1,
     save_strategy="steps",
     save_safetensors=False,
-    logging_steps=10,
+    logging_steps=1,
 )
 
 data_collator = DataCollatorForLanguageModeling(tokenizer=t, mlm=False)
@@ -121,14 +128,15 @@ scheduler = get_cosine_schedule_with_warmup(
     num_warmup_steps=100,
     num_training_steps=1000,
 )
-t = AutoTokenizer.from_pretrained("./training_output/checkpoint-20")
+
 trainer = ModifiedTrainer(
     model=peft_model,
-    processing_class=t,
+    llama_base_model=backup_model,
     args=training_args,
     optimizers=(optimizer, scheduler),
     train_dataset=dataset,
     data_collator=data_collator,
 )
+
 
 trainer.train(resume_from_checkpoint=True)
