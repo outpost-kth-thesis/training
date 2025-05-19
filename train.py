@@ -24,7 +24,7 @@ class ModifiedTrainer(Trainer):
 
     def save_model(self, output_dir = None, _internal_call = False):
         self.processing_class.save_pretrained(output_dir)
-        self.peft_model.save_pretrained(output_dir)
+        self.model.save_pretrained(output_dir)
 
     def _load_from_checkpoint(self, resume_from_checkpoint, model=None):
         optimizer_state_dict = torch.load(
@@ -51,17 +51,6 @@ model = AutoModelForCausalLM.from_pretrained(
     model_name, device_map="auto", quantization_config=quantization_configs)
 model.resize_token_embeddings(len(t), model.model.embed_tokens.num_embeddings)
 
-training_args = TrainingArguments(
-    output_dir="./training_output",
-    per_device_train_batch_size=batch_size,
-    num_train_epochs=epochs,
-    save_steps=10,
-    save_strategy="steps",
-    save_safetensors=False,
-    logging_steps=10,
-    lr_scheduler_type="linear"
-)
-
 lora_config = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     inference_mode=False,
@@ -73,11 +62,16 @@ lora_config = LoraConfig(
 peft_model = get_peft_model(model=model, peft_config=lora_config)
 
 optimizer = create_loraplus_optimizer(
-    model=model,
+    model=peft_model,
     optimizer_cls=bnb.optim.Adam8bit,
     lr=5e-5,
     loraplus_lr_ratio=16,
 )
+
+for each in optimizer.param_groups:
+    for i in each["params"]:        
+        print(i.data.size())
+print("done printing before call")
 
 scheduler = get_cosine_schedule_with_warmup(
     optimizer,
@@ -85,8 +79,21 @@ scheduler = get_cosine_schedule_with_warmup(
     num_training_steps=1000,
 )
 
+
+training_args = TrainingArguments(
+    output_dir="./training_output",
+    per_device_train_batch_size=batch_size,
+    num_train_epochs=epochs,
+    save_steps=10,
+    save_strategy="steps",
+    save_safetensors=False,
+    logging_steps=10,
+    lr_scheduler_type="linear"
+)
+
+
 data_collator = DataCollatorForLanguageModeling(tokenizer=t, mlm=False)
-trainer = ModifiedTrainer(
+trainer = Trainer(
     model=peft_model,
     processing_class=t,
     optimizers=(optimizer, scheduler),
