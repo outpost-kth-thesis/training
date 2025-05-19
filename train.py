@@ -1,41 +1,12 @@
 from data import LanguageDataset
-from torch.utils.data import DataLoader
-from transformers import Trainer, TrainingArguments, DataCollatorForLanguageModeling, AutoTokenizer, BitsAndBytesConfig, AutoModelForCausalLM, get_cosine_schedule_with_warmup
-from config import epochs, model_name, batch_size, learning_rate
+from transformers import Trainer, TrainingArguments, DataCollatorForLanguageModeling, BitsAndBytesConfig, AutoModelForCausalLM, get_cosine_schedule_with_warmup
+from config import epochs, model_name, batch_size, checkpoints_dir
 from tokenization import LanguageTokenizer
 from torch.optim import AdamW
 import torch
 from peft.optimizers import create_loraplus_optimizer
-from peft import LoraConfig, TaskType, PeftModel, PeftConfig, get_peft_model
-from safetensors.torch import save_model
-from transformers.trainer_utils import get_last_checkpoint
+from peft import LoraConfig, TaskType, get_peft_model
 import bitsandbytes as bnb
-from torch.optim import AdamW
-
-
-class ModifiedTrainer(Trainer):
-    def _save_optimizer_and_scheduler(self, output_dir):
-        torch.save({
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'param_groups': self.optimizer.param_groups,
-            'state': self.optimizer.state
-        }, f"{output_dir}/optimizer.pt")
-
-
-    def save_model(self, output_dir = None, _internal_call = False):
-        self.processing_class.save_pretrained(output_dir)
-        self.model.save_pretrained(output_dir)
-
-    def _load_from_checkpoint(self, resume_from_checkpoint, model=None):
-        optimizer_state_dict = torch.load(
-            f"{resume_from_checkpoint}/optimizer.pt",
-            weights_only=False                          # Setting this line to False is generally not recommended as this can allow for arbitrary code execution
-        )
-        self.optimizer.load_state_dict(optimizer_state_dict, save_embedding_layer=True)
-        self.peft_model = PeftModel.from_pretrained(self.model, resume_from_checkpoint, save_embedding_layer=True)
-        self.model = self.peft_model
-        self.processing_class = AutoTokenizer.from_pretrained(resume_from_checkpoint, save_embedding_layer=True)
-        
 
 dataset = LanguageDataset()
 t = LanguageTokenizer().tokenizer
@@ -81,7 +52,7 @@ scheduler = get_cosine_schedule_with_warmup(
 
 
 training_args = TrainingArguments(
-    output_dir="./training_output",
+    output_dir=checkpoints_dir,
     per_device_train_batch_size=batch_size,
     num_train_epochs=epochs,
     save_steps=10,
