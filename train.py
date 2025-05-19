@@ -39,10 +39,6 @@ optimizer = create_loraplus_optimizer(
     loraplus_lr_ratio=16,
 )
 
-for each in optimizer.param_groups:
-    for i in each["params"]:        
-        print(i.data.size())
-print("done printing before call")
 
 scheduler = get_cosine_schedule_with_warmup(
     optimizer,
@@ -55,10 +51,10 @@ training_args = TrainingArguments(
     output_dir=checkpoints_dir,
     per_device_train_batch_size=batch_size,
     num_train_epochs=epochs,
-    save_steps=10,
+    save_steps=1000,
     save_strategy="steps",
     save_safetensors=False,
-    logging_steps=1,
+    logging_steps=10,
     lr_scheduler_type="linear"
 )
 
