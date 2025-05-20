@@ -23,7 +23,7 @@ class LanguageDataset(Dataset):
             "minified_file_content":minified_file_content,
             "original_file_content":original_file_content
         }
-        return self.t.tokenize(json)
+        return self.t.tokenize_for_training(json)
         # return json
 
     def _walk_root_directory(self):

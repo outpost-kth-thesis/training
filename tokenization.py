@@ -25,16 +25,22 @@ class LanguageTokenizer:
     def save_pretrained(self, **kwargs):
         self.tokenizer.save_pretrained(**kwargs)
 
-    def tokenize(self, item):
-        minified_file_content = item["minified_file_content"]
-        original_file_content = item["original_file_content"]
-        formatted_minified_content = self._format_llama(minified_file_content)
-        tokenized = self.tokenizer(formatted_minified_content, text_target=original_file_content, padding=tokenizer_padding, 
-                              max_length=tokenizer_max_length, truncation=tokenizer_truncate, return_tensors="pt")
+    def tokenize_for_inference(self, item):
+        return self._tokenize(item=item)
+
+    def tokenize_for_training(self, item):
+        tokenized = self._tokenize(item=item)
         tokenized["input_ids"] = tokenized["input_ids"].squeeze()
         tokenized["attention_mask"] = tokenized["attention_mask"].squeeze()
         tokenized["labels"] = tokenized["labels"].squeeze()
         return tokenized
+    
+    def _tokenize(self, item):
+        minified_file_content = item["minified_file_content"]
+        original_file_content = item["original_file_content"]
+        formatted_minified_content = self._format_llama(minified_file_content)
+        return self.tokenizer(formatted_minified_content, text_target=original_file_content, padding=tokenizer_padding, 
+                              max_length=tokenizer_max_length, truncation=tokenizer_truncate, return_tensors="pt")
     
     def decode(self, tokens):
         return self.tokenizer.decode(tokens)
